@@ -1,0 +1,39 @@
+minimumReleaseAge: 4320 # 3 days
+minimumReleaseAgeExclude:
+  - "@dnd-mapp/*"
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 4320 # 3 days
+
+# Peer Dependency Settings
+autoInstallPeers: false
+dedupePeers: true
+strictPeerDependencies: true
+
+# CLI Settings
+engineStrict: true
+
+# Build Settings
+allowBuilds:
+  lefthook: true
+sideEffectsCache: false
+
+# Other Settings
+catalogMode: "strict"
+savePrefix: "~"
+
+catalog:
+  "@dnd-mapp/changelog-tools": ~1.1.0
+  "@types/node": ~24.13.5
+  typescript: ~6.0.3
+catalogs:
+  commitlint:
+    "@commitlint/cli": ~21.2.2
+    "@dnd-mapp/config-commitlint": ~1.1.0
+    lefthook: ~2.1.14
+  markdown:
+    "@dnd-mapp/config-markdown": ~1.0.0
+    markdownlint-cli2: ~0.23.2
+  prettier:
+    "@dnd-mapp/config-prettier": ~1.1.0
+    prettier: ~3.9.7
+    prettier-plugin-organize-imports: ~4.3.0
