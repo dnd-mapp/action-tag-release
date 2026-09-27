@@ -2,7 +2,7 @@
   "$schema": "https://www.schemastore.org/package.json",
   "name": "@dnd-mapp/action-tag-release",
   "description": "Composite GitHub Action that tags the merge commit of a release pull request, so the tag push starts the release workflow.",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "license": "MIT",
   "type": "module",
