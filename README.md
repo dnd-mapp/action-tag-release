@@ -5,7 +5,7 @@
 
 Composite GitHub Action that creates the annotated `vX.Y.Z` tag on the merge commit of a release pull request, so the tag push starts the release workflow.
 
-The D&D Mapp packages are released from a tag push, after their release pull request merges. [`dnd-mapp/action-prepare-release`](https://github.com/dnd-mapp/action-prepare-release) opens that pull request with the GitHub App of the organization. This action runs on every push to the base branch. When the push is the merge of such a pull request, it tags the merge commit with the same app. See [The tag release workflow](#the-tag-release-workflow).
+The D&D Mapp packages are released from a tag push, after their release pull request merges. [`dnd-mapp/action-prepare-release`](https://github.com/dnd-mapp/action-prepare-release) opens that pull request with the GitHub App of the organization. This action runs on every push to the base branch. When the push is the merge of such a pull request, it tags the merge commit with the same app. See [The tag release job](#the-tag-release-job).
 
 ## Requirements
 
@@ -58,28 +58,28 @@ When a step fails, the action reports why as an error annotation, so the reason 
 | `tag`     | The release tag, or empty when the push is not a release                                     |
 | `created` | Whether the action created the tag, `true` or `false`                                        |
 
-## The tag release workflow
+## The tag release job
 
-Every package repository has this `tag-release.yaml`.
+Every package repository runs the action in a `tag` job of its `push-main.yaml`, next to the `ci` job.
 
 ```yaml
-name: Tag release
+name: Push main
 
 on:
     push:
         branches:
             - main
 
-permissions: {}
-
 jobs:
+    # The ci job of the repository goes here.
+
     tag:
         name: Tag release
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions: {}
         concurrency:
-            group: ${{ github.workflow }}
+            group: ${{ github.workflow }}-${{ github.job }}
             cancel-in-progress: false
         steps:
             - name: Tag the release
@@ -95,7 +95,8 @@ jobs:
 - The same app that opens the release pull requests, so the action can tell a release pull request from any other by its author. Rulesets allow only the app to create and update `chore/release-*` branches.
 - The tag goes on the merge commit that the push brings to the base branch. The release workflow checks that the tagged commit is on that branch.
 - No permissions for `GITHUB_TOKEN`, because the app token does all the reading and writing, and it exists only inside the action.
-- A composite action cannot read secrets, so the workflow passes the app credentials as inputs.
+- A job in the push workflow and not a workflow of its own, because both run on every push to `main`.
+- A composite action cannot read secrets, so the job passes the app credentials as inputs.
 - One run at a time through `concurrency`, so two pushes cannot race for the same tag.
 
 ### One-time setup
@@ -109,7 +110,7 @@ The D&D Mapp organization shares the credentials of its GitHub App with the repo
 
 ## Versioning
 
-This repository is released with `vX.Y.Z` tags and GitHub Releases, like the packages. It tags its own releases with its [tag release workflow](.github/workflows/tag-release.yaml), which runs the action from the checkout. Consumers pin a commit SHA, so a new release never changes a workflow until the pin is updated. Renaming or removing an input or output, or changing a default, is a breaking change.
+This repository is released with `vX.Y.Z` tags and GitHub Releases, like the packages. It tags its own releases with the `tag` job of its [push workflow](.github/workflows/push-main.yaml), which runs the action from the checkout. Consumers pin a commit SHA, so a new release never changes a workflow until the pin is updated. Renaming or removing an input or output, or changing a default, is a breaking change.
 
 ## Changelog
 

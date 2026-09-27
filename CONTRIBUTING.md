@@ -39,16 +39,16 @@ The pre-commit hooks only check files. Run `pnpm run format` to fix formatting i
 
 The action lives in `action.yaml` at the repository root, so consumers reference it as `dnd-mapp/action-tag-release`.
 
-| Path                                     | Purpose                                                                                            |
-|:-----------------------------------------|:---------------------------------------------------------------------------------------------------|
-| `action.yaml`                            | Tags the merge commit of a release pull request                                                    |
-| `scripts/annotate.sh`                    | Turns failures into error annotations, for the steps of the action to source                       |
-| `renovate.json`                          | The Renovate config of this repository, which extends the shared preset `dnd-mapp/renovate-config` |
-| `.github/actions/ci/action.yaml`         | The checks that the pull request, push, and release workflows run                                  |
-| `.github/workflows/prepare-release.yaml` | Opens the release pull requests of this repository, using `dnd-mapp/action-prepare-release`        |
-| `.github/workflows/tag-release.yaml`     | Tags the releases of this repository, using the action from the checkout                           |
-| `.github/workflows/release.yaml`         | Releases this repository from its tags, using `dnd-mapp/action-verify-release`                     |
-| `.github/actionlint.yaml`                | Declares the `ubuntu-26.04` runner label, which actionlint does not know yet                       |
+| Path                                     | Purpose                                                                                                  |
+|:-----------------------------------------|:---------------------------------------------------------------------------------------------------------|
+| `action.yaml`                            | Tags the merge commit of a release pull request                                                          |
+| `scripts/annotate.sh`                    | Turns failures into error annotations, for the steps of the action to source                             |
+| `renovate.json`                          | The Renovate config of this repository, which extends the shared preset `dnd-mapp/renovate-config`       |
+| `.github/actions/ci/action.yaml`         | The checks that the pull request, push, and release workflows run                                        |
+| `.github/workflows/push-main.yaml`       | Runs the CI checks on `main`, and tags the releases of this repository with the action from the checkout |
+| `.github/workflows/prepare-release.yaml` | Opens the release pull requests of this repository, using `dnd-mapp/action-prepare-release`              |
+| `.github/workflows/release.yaml`         | Releases this repository from its tags, using `dnd-mapp/action-verify-release`                           |
+| `.github/actionlint.yaml`                | Declares the `ubuntu-26.04` runner label, which actionlint does not know yet                             |
 
 ## Changing the action
 
@@ -62,7 +62,7 @@ Report every failure as an error annotation, so the run summary shows why the ac
 
 Pass inputs and outputs into `run` steps through `env`, and read them as shell variables. Never interpolate `${{ }}` expressions into a script, because a value with quotes or spaces would break or change the command.
 
-actionlint does not read `action.yaml` itself. It checks the file through the tag release workflow of this repository, which runs the action from the checkout. Keep that usage in place when you change an input, so a rename is caught before a release.
+actionlint does not read `action.yaml` itself. It checks the file through the `tag` job of the push workflow of this repository, which runs the action from the checkout. Keep that usage in place when you change an input, so a rename is caught before a release.
 
 When you add or change an input, output, or check, update these files in the same pull request.
 
@@ -89,11 +89,11 @@ Prepare release workflows depend on the names of the inputs and outputs and on t
 ## Releasing
 
 1. Run the [prepare release workflow](.github/workflows/prepare-release.yaml) on `main` with the part of the version to bump, for example `gh workflow run prepare-release.yaml -f bump=minor`. It opens the `chore: release X.Y.Z` pull request with auto-merge on.
-2. Review and approve the pull request. Once it merges, the [tag release workflow](.github/workflows/tag-release.yaml) creates the annotated tag `vX.Y.Z` on the merge commit.
+2. Review and approve the pull request. Once it merges, the `tag` job of the [push workflow](.github/workflows/push-main.yaml) creates the annotated tag `vX.Y.Z` on the merge commit.
 3. The [release workflow](.github/workflows/release.yaml) runs the CI checks, verifies the tag and the changelog, and creates the GitHub Release.
 4. Update the SHA pins in the package repositories to the tagged commit.
 
-The first release, 1.0.0, has no release to bump from. Prepare its `chore: release 1.0.0` commit by hand instead of step 1: set `version` in `package.json`, rename `[Unreleased]` to `[1.0.0] - YYYY-MM-DD`, add a fresh `[Unreleased]`, and update the link references. Open it from the `chore/first-release` branch, because only the app may create `chore/release-*` branches. The tag release workflow skips that merge, so create the annotated tag `v1.0.0` on the merge commit and push it by hand.
+The first release, 1.0.0, has no release to bump from. Prepare its `chore: release 1.0.0` commit by hand instead of step 1: set `version` in `package.json`, rename `[Unreleased]` to `[1.0.0] - YYYY-MM-DD`, add a fresh `[Unreleased]`, and update the link references. Open it from the `chore/first-release` branch, because only the app may create `chore/release-*` branches. The `tag` job skips that merge, so create the annotated tag `v1.0.0` on the merge commit and push it by hand.
 
 ## Code style
 
