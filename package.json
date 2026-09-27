@@ -1,0 +1,48 @@
+{
+  "$schema": "https://www.schemastore.org/package.json",
+  "name": "@dnd-mapp/action-tag-release",
+  "description": "Composite GitHub Action that tags the merge commit of a release pull request, so the tag push starts the release workflow.",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "author": "D&D Mapp",
+  "homepage": "https://github.com/dnd-mapp/action-tag-release#readme",
+  "bugs": {
+    "url": "https://github.com/dnd-mapp/action-tag-release/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dnd-mapp/action-tag-release.git"
+  },
+  "scripts": {
+    "format": "prettier -w .",
+    "format-check": "prettier -c .",
+    "lint-md": "markdownlint-cli2"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.21.0",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.5.1",
+      "onFail": "error"
+    }
+  },
+  "devDependencies": {
+    "@commitlint/cli": "catalog:commitlint",
+    "@dnd-mapp/changelog-tools": "catalog:",
+    "@dnd-mapp/config-commitlint": "catalog:commitlint",
+    "@dnd-mapp/config-markdown": "catalog:markdown",
+    "@dnd-mapp/config-prettier": "catalog:prettier",
+    "@types/node": "catalog:",
+    "lefthook": "catalog:commitlint",
+    "markdownlint-cli2": "catalog:markdown",
+    "prettier": "catalog:prettier",
+    "prettier-plugin-organize-imports": "catalog:prettier",
+    "typescript": "catalog:"
+  }
+}

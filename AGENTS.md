@@ -40,4 +40,4 @@ Turn on auto-merge for every pull request you open, so it merges as soon as it i
 
 - A draft cannot have auto-merge. Mark it ready with `gh pr ready <number>` first, then run the command above.
 - When the user asks to keep a pull request open, leave auto-merge off. If it is already on, turn it off with `gh pr merge <number> --disable-auto`.
-- Release pull requests (`chore: release X.Y.Z`) come from the Prepare release workflow, which turns on auto-merge itself. The Tag release workflow tags their merge commit, which starts the release. Only the first release, 1.0.0, is prepared and tagged by hand, as `CONTRIBUTING.md` describes.
+- Release pull requests (`chore: release X.Y.Z`) come from the Prepare release workflow, which turns on auto-merge itself. The `tag` job of the Push main workflow tags their merge commit, which starts the release. Only the first release, 1.0.0, is prepared and tagged by hand, as `CONTRIBUTING.md` describes.

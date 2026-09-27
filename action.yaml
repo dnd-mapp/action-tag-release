@@ -1,0 +1,195 @@
+name: Tag release
+description: Creates the annotated vX.Y.Z tag on the merge commit of a release pull request that the GitHub App opened
+
+inputs:
+    client-id:
+        description: Client ID of the GitHub App that opened the release pull request, and that creates the tag
+        required: true
+    private-key:
+        description: Private key of the GitHub App
+        required: true
+    manifest:
+        description: Path to the package manifest, relative to the repository root
+        required: false
+        default: package.json
+    base-branch:
+        description: Branch that release pull requests merge into, and whose pushes the action checks
+        required: false
+        default: main
+
+outputs:
+    version:
+        description: The version of the release, without the leading v, or empty when the push is not a release
+        value: ${{ steps.version.outputs.version }}
+    tag:
+        description: The release tag, or empty when the push is not a release
+        value: ${{ steps.tag.outputs.tag }}
+    created:
+        description: Whether the action created the tag, true or false
+        value: ${{ steps.create.outputs.created == 'true' }}
+
+runs:
+    using: composite
+    steps:
+        - name: Check the push
+          id: push
+          shell: bash
+          env:
+              BASE_BRANCH: ${{ inputs.base-branch }}
+          run: |
+              source "$GITHUB_ACTION_PATH/scripts/annotate.sh"
+
+              if [ "$GITHUB_EVENT_NAME" != "push" ]; then
+                  annotate_error "The action runs on a push to $BASE_BRANCH, not on a $GITHUB_EVENT_NAME event"
+                  exit 1
+              fi
+              if [ "$GITHUB_REF" != "refs/heads/$BASE_BRANCH" ]; then
+                  annotate_error "The action runs on a push to $BASE_BRANCH, not to $GITHUB_REF"
+                  exit 1
+              fi
+              echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+        - name: Create the app token
+          id: token
+          uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+          with:
+              client-id: ${{ inputs.client-id }}
+              private-key: ${{ inputs.private-key }}
+              permission-contents: write
+              permission-pull-requests: read
+
+        - name: Find the release pull request
+          id: pull-request
+          shell: bash
+          env:
+              GH_TOKEN: ${{ steps.token.outputs.token }}
+              SHA: ${{ steps.push.outputs.sha }}
+              BASE_BRANCH: ${{ inputs.base-branch }}
+              APP_SLUG: ${{ steps.token.outputs.app-slug }}
+          run: |
+              source "$GITHUB_ACTION_PATH/scripts/annotate.sh"
+
+              pulls=$(run_annotated gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls")
+              pull=$(run_annotated jq -c --arg sha "$SHA" --arg base "$BASE_BRANCH" \
+                  'map(select(.merged_at != null and .merge_commit_sha == $sha and .base.ref == $base)) | first // empty' <<< "$pulls")
+
+              if [ -z "$pull" ]; then
+                  annotate_notice "The commit $SHA is not the merge commit of a pull request, so there is no release to tag"
+                  echo "release=false" >> "$GITHUB_OUTPUT"
+                  exit 0
+              fi
+
+              number=$(jq -r .number <<< "$pull")
+              head_ref=$(jq -r .head.ref <<< "$pull")
+              head_repository=$(jq -r .head.repo.full_name <<< "$pull")
+              author=$(jq -r .user.login <<< "$pull")
+
+              if [ "$head_repository" != "$GITHUB_REPOSITORY" ] || [[ "$head_ref" != chore/release-* ]]; then
+                  annotate_notice "The commit $SHA merges #$number from $head_repository:$head_ref, which is not a release branch, so there is no release to tag"
+                  echo "release=false" >> "$GITHUB_OUTPUT"
+                  exit 0
+              fi
+              if [ "$author" != "${APP_SLUG}[bot]" ]; then
+                  annotate_error "The release pull request #$number was opened by $author. Only ${APP_SLUG}[bot] opens release pull requests, so the action does not tag it."
+                  exit 1
+              fi
+
+              echo "release=true" >> "$GITHUB_OUTPUT"
+              echo "number=$number" >> "$GITHUB_OUTPUT"
+              echo "version=${head_ref#chore/release-}" >> "$GITHUB_OUTPUT"
+
+        - name: Check the version
+          id: version
+          if: steps.pull-request.outputs.release == 'true'
+          shell: bash
+          env:
+              GH_TOKEN: ${{ steps.token.outputs.token }}
+              SHA: ${{ steps.push.outputs.sha }}
+              MANIFEST: ${{ inputs.manifest }}
+              BRANCH_VERSION: ${{ steps.pull-request.outputs.version }}
+          run: |
+              source "$GITHUB_ACTION_PATH/scripts/annotate.sh"
+
+              manifest=$(run_annotated gh api -H "Accept: application/vnd.github.raw+json" "repos/$GITHUB_REPOSITORY/contents/${MANIFEST#./}?ref=$SHA")
+              version=$(run_annotated jq -r '.version // empty' <<< "$manifest")
+
+              if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+                  annotate_error "The version '$version' in $MANIFEST at $SHA is not a stable semantic version, such as 1.2.3"
+                  exit 1
+              fi
+              if [ "$version" != "$BRANCH_VERSION" ]; then
+                  annotate_error "The version $version in $MANIFEST at $SHA does not match the release branch chore/release-$BRANCH_VERSION"
+                  exit 1
+              fi
+              echo "version=$version" >> "$GITHUB_OUTPUT"
+
+        - name: Check the tag
+          id: tag
+          if: steps.pull-request.outputs.release == 'true'
+          shell: bash
+          env:
+              GH_TOKEN: ${{ steps.token.outputs.token }}
+              SHA: ${{ steps.push.outputs.sha }}
+              VERSION: ${{ steps.version.outputs.version }}
+          run: |
+              source "$GITHUB_ACTION_PATH/scripts/annotate.sh"
+
+              tag="v$VERSION"
+              echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+              refs=$(run_annotated gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$tag")
+              target=$(run_annotated jq -r --arg ref "refs/tags/$tag" '.[] | select(.ref == $ref) | "\(.object.type) \(.object.sha)"' <<< "$refs")
+
+              if [ -z "$target" ]; then
+                  echo "exists=false" >> "$GITHUB_OUTPUT"
+                  exit 0
+              fi
+
+              read -r type object <<< "$target"
+              if [ "$type" = "tag" ]; then
+                  object=$(run_annotated gh api "repos/$GITHUB_REPOSITORY/git/tags/$object" --jq .object.sha)
+              fi
+              if [ "$object" != "$SHA" ]; then
+                  annotate_error "The tag $tag already exists and points at $object, not at the merge commit $SHA"
+                  exit 1
+              fi
+
+              annotate_notice "The tag $tag already points at the merge commit $SHA, so there is nothing to do"
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+
+        - name: Create the tag
+          id: create
+          if: steps.pull-request.outputs.release == 'true' && steps.tag.outputs.exists == 'false'
+          shell: bash
+          env:
+              GH_TOKEN: ${{ steps.token.outputs.token }}
+              SHA: ${{ steps.push.outputs.sha }}
+              VERSION: ${{ steps.version.outputs.version }}
+              TAG: ${{ steps.tag.outputs.tag }}
+              NUMBER: ${{ steps.pull-request.outputs.number }}
+              APP_SLUG: ${{ steps.token.outputs.app-slug }}
+          run: |
+              source "$GITHUB_ACTION_PATH/scripts/annotate.sh"
+
+              bot="${APP_SLUG}[bot]"
+              bot_id=$(run_annotated gh api "users/$bot" --jq .id)
+
+              # An annotated tag is a tag object and a ref to it. The message is the version, like the tags made by hand.
+              tag_sha=$(jq -n \
+                  --arg tag "$TAG" \
+                  --arg message "$VERSION" \
+                  --arg object "$SHA" \
+                  --arg name "$bot" \
+                  --arg email "$bot_id+$bot@users.noreply.github.com" \
+                  --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                  '{
+                      tag: $tag,
+                      message: ($message + "\n"),
+                      object: $object,
+                      type: "commit",
+                      tagger: { name: $name, email: $email, date: $date }
+                  }' | run_annotated gh api "repos/$GITHUB_REPOSITORY/git/tags" --input - --jq .sha)
+              run_annotated gh api --silent "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$tag_sha"
+
+              echo "created=true" >> "$GITHUB_OUTPUT"
+              echo "Tagged the merge commit \`$SHA\` of #$NUMBER as \`$TAG\`." >> "$GITHUB_STEP_SUMMARY"
