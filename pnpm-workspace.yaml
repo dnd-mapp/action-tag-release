@@ -24,7 +24,7 @@ savePrefix: "~"
 catalog:
   "@dnd-mapp/changelog-tools": ~1.1.1
   "@types/node": ~24.13.6
-  typescript: ~6.0.3
+  typescript: ~7.0.2
 catalogs:
   commitlint:
     "@commitlint/cli": ~21.2.3
