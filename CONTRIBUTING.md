@@ -43,7 +43,7 @@ The action lives in `action.yaml` at the repository root, so consumers reference
 |:-----------------------------------------|:---------------------------------------------------------------------------------------------------------|
 | `action.yaml`                            | Tags the merge commit of a release pull request                                                          |
 | `scripts/annotate.sh`                    | Turns failures into error annotations, for the steps of the action to source                             |
-| `renovate.json`                          | The Renovate config of this repository, which extends the shared preset `dnd-mapp/renovate-config`       |
+| `renovate.json`                          | The Renovate config of this repository, which extends the shared preset `dnd-mapp/config-renovate`       |
 | `.github/actions/ci/action.yaml`         | The checks that the pull request, push, and release workflows run                                        |
 | `.github/workflows/push-main.yaml`       | Runs the CI checks on `main`, and tags the releases of this repository with the action from the checkout |
 | `.github/workflows/prepare-release.yaml` | Opens the release pull requests of this repository, using `dnd-mapp/action-prepare-release`              |
