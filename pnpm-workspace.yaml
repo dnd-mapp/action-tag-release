@@ -29,7 +29,7 @@ catalogs:
   commitlint:
     "@commitlint/cli": ~21.2.3
     "@dnd-mapp/config-commitlint": ~1.1.0
-    lefthook: ~2.1.14
+    lefthook: ~2.1.16
   markdown:
     "@dnd-mapp/config-markdown": ~1.0.0
     markdownlint-cli2: ~0.23.3
