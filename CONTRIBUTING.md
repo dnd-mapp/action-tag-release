@@ -90,7 +90,7 @@ Prepare release workflows depend on the names of the inputs and outputs and on t
 
 1. Run the [prepare release workflow](.github/workflows/prepare-release.yaml) on `main` with the part of the version to bump, for example `gh workflow run prepare-release.yaml -f bump=minor`. It opens the `chore: release X.Y.Z` pull request with auto-merge on.
 2. Review and approve the pull request. Once it merges, the `tag` job of the [push workflow](.github/workflows/push-main.yaml) creates the annotated tag `vX.Y.Z` on the merge commit.
-3. The [release workflow](.github/workflows/release.yaml) runs the CI checks, verifies the tag and the changelog, and creates the GitHub Release.
+3. The [release workflow](.github/workflows/release.yaml) runs the CI checks, verifies the tag and the changelog, and creates the GitHub Release, which opens a discussion in the Announcements category.
 4. Update the SHA pins in the package repositories to the tagged commit.
 
 The first release, 1.0.0, has no release to bump from. Prepare its `chore: release 1.0.0` commit by hand instead of step 1: set `version` in `package.json`, rename `[Unreleased]` to `[1.0.0] - YYYY-MM-DD`, add a fresh `[Unreleased]`, and update the link references. Open it from the `chore/first-release` branch, because only the app may create `chore/release-*` branches. The `tag` job skips that merge, so create the annotated tag `v1.0.0` on the merge commit and push it by hand.
